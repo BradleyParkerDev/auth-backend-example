@@ -3,38 +3,43 @@ var router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { db } = require('../mongo');
+const { uuid } = require("uuidv4");
 const {
   generatePasswordHash
  
-} = require('./auth')
+} = require('../auth')
 
-
-let user = {};
-
-/* GET users listing. */
+/* REGISTER USER */
 router.post("/registration", async (req, res, next) => {
 
-  //parse out email and the password 
-  const email = req.body.email;
-  const password = req.body.password;
+  try {
 
-  //generate our hash value 
-  const hash = await generatePasswordHash(password);
+        //parse out email and the password 
+      const email = req.body.email;
+      const password = req.body.password;
 
+      //generate our hash value 
+      const hash = await generatePasswordHash(password);
+      
+      //create a new user object
+      const user = {
+        id: uuid(),
+        email: email,
+        password: hash,
+      }; 
+      await db().collection("users").insertOne(user);
 
+      res.json({ success: true});
+      
+  } catch (error) {
+    console.log(error);
+    res.json({ 
+      success: false,
+      message: error.toString()
+    })
+    
+  }
   
-
-  user = {
-    email,
-    password: hash,
-  }; // Simulating us creating a user in the database
-
-  console.log(salt);
-  console.log(hash);
-
-  console.log(user);
-
-  res.send("respond with a resource");
 });
 
 router.post("/login", async (req, res) => {
