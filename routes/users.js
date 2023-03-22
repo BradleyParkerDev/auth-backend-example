@@ -6,7 +6,9 @@ const { db } = require('../mongo');
 const { uuid } = require("uuidv4");
 const {
   generatePasswordHash,
-  validatePassword
+  validatePassword,
+  generateUserToken,
+  verifyToken
 } = require('../auth')
 
 /* REGISTER USER */
@@ -43,61 +45,77 @@ router.post("/registration", async (req, res, next) => {
 });
 
 router.post("/login", async (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
 
+  try {
 
-  //we would get the hashed password from the database 
-  const user = await db().collection("users").findOne({email});
-  const isValid = validatePassword(password, user.password);
+    const email = req.body.email;
+    const password = req.body.password;
+  
+    //we would get the hashed password from the database 
+    const user = await db().collection("users").findOne({email});
+    const isValid = validatePassword(password, user.password);
 
-  if (isValid === false) {
-    // The input password is incorrect
+    // check if the user is an admin or not
+    const userType = email.includes("codeimmersives.com") ? "admin" : "user";
+
+    //login valid for an hour
+    const exp = Math.floor(Date.now() / 1000) + 60 * 60;
+  
+    if (!isValid) {
+      // The input password is incorrect
+      res.json({
+        success: false,
+        message: "Your password was incorrect",
+      }).status(204); //we use 204 because the request is valid, but the input is still incorrect
+      return;
+    } 
+  
+    const data = {
+        date: new Date(),
+        userId: user.id,
+        email: email,
+        exp: exp,
+        scope: userType
+    };
+  
+    const token = generateUserToken(data)
+  
+    res.json({ 
+      success: true,
+      token,
+      email 
+    })
+    
+  } catch (error) {
+
+    console.log(error);
     res.json({
-      success: false,
-      message: "Your password was incorrect",
-    });
-    return;
+      success: false, 
+      message: error.toString()
+    })
+    
   }
-
-  //login valid for an hour
-	const exp = Math.floor(Date.now() / 1000) + 60 * 60;
-  // 3600 seconds in an hour (60 min * 60 seconds)
-
-  //other data that describes our "session" of loggin in
-  const payload = {
-    email,
-		exp, 
-    scope: "user",
-  };
-
-  //secret key is unique to app
-  const secretKey = process.env.JWT_SECRET_KEY;
-
-  //server signing off on the payload, so the receiver knows where it's coming from.
-  const token = jwt.sign(payload, secretKey);
-
-  res.json({
-    success: true,
-    token: token,
-  });
+  
 });
 
 router.get("/message", (req, res) => {
   try {
-    const token = req.header("ci_token");
 
+    //this usually comes from the front-end 
+    //token header key is stored in the request header hence req.header(....)
+    const tokenHeader = req.header(process.env.TOKEN_HEADER_KEY); 
+    const token = req.header(tokenHeader) //get the token using the token header key
     console.log(token);
-    const secretKey = process.env.JWT_SECRET_KEY;
-
-    const verified = jwt.verify(token, secretKey);
+    const verified = verifyToken(token);
 
     console.log(verified);
 
+    //returned successful if 
     res.json({
       success: true,
 			message: `Hello ${verified.email}`
     });
+
   } catch (error) {
     res.json({
       success: false,
