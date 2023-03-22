@@ -5,8 +5,8 @@ const jwt = require("jsonwebtoken");
 const { db } = require('../mongo');
 const { uuid } = require("uuidv4");
 const {
-  generatePasswordHash
- 
+  generatePasswordHash,
+  validatePassword
 } = require('../auth')
 
 /* REGISTER USER */
@@ -48,16 +48,10 @@ router.post("/login", async (req, res) => {
 
 
   //we would get the hashed password from the database 
-  const hashedUserPassword = user.password;
+  const user = await db().collection("users").findOne({email});
+  const isValid = validatePassword(password, user.password);
 
-  console.log(password, hashedUserPassword);
-
-  // we can then use bycrypt to check if the password is valid
-  const passwordMatch = await bcrypt.compare(password, hashedUserPassword);
-
-  console.log(passwordMatch);
-
-  if (passwordMatch === false) {
+  if (isValid === false) {
     // The input password is incorrect
     res.json({
       success: false,
@@ -66,11 +60,9 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-
   //login valid for an hour
 	const exp = Math.floor(Date.now() / 1000) + 60 * 60;
   // 3600 seconds in an hour (60 min * 60 seconds)
-  console.log(exp);
 
   //other data that describes our "session" of loggin in
   const payload = {
@@ -82,7 +74,6 @@ router.post("/login", async (req, res) => {
   //secret key is unique to app
   const secretKey = process.env.JWT_SECRET_KEY;
 
-  console.log(secretKey);
   //server signing off on the payload, so the receiver knows where it's coming from.
   const token = jwt.sign(payload, secretKey);
 

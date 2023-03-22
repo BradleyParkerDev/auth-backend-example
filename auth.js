@@ -15,6 +15,13 @@ const generatePasswordHash = async (password) => {
     return hash;
 }
 
+const validatePassword = async (password, hashedUserPassword) => {
+    // we can then use bycrypt to check if the password is valid
+    const passwordMatch = await bcrypt.compare(password, hashedUserPassword);
+    return passwordMatch;
+}
+
 module.exports = {
-    generatePasswordHash
+    generatePasswordHash,
+    validatePassword
 }
