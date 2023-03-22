@@ -2,6 +2,12 @@ var express = require("express");
 var router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { db } = require('../mongo');
+const {
+  generatePasswordHash
+ 
+} = require('./auth')
+
 
 let user = {};
 
@@ -12,13 +18,11 @@ router.post("/registration", async (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  const saltRounds = 5; // For prod apps, saltRounds are going to be between 5 and 10
-  const salt = await bcrypt.genSalt(saltRounds);
-  //we never save a password in  database as cleartext,
-  //instead we always "hash" it
-  // hash = generate a long string of letters and numbers that
-  // is associated with our password
-  const hash = await bcrypt.hash(password, salt);
+  //generate our hash value 
+  const hash = await generatePasswordHash(password);
+
+
+  
 
   user = {
     email,

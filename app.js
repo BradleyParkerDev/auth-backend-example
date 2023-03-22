@@ -10,6 +10,9 @@ require("dotenv").config();
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
+//connect to mongodb 
+var { mongoConnect } = require('./mongo.js')
+mongoConnect();
 //instantiating express
 var app = express();
 
